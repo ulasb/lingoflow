@@ -1,6 +1,7 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
@@ -31,9 +32,7 @@ class ChatTurn(BaseModel):
 class ChatAbandon(BaseModel):
     scenario_id: str
 
-# Keep a simple in-memory map of active chats to their history ID
-# For a production app this would involve sessions/users
-active_chats = {}
+# Remove in-memory state tracking for active_chats, relying seamlessly on SQLite lookup.
 
 # --- API Endpoints ---
 
@@ -69,17 +68,16 @@ async def generate_scenarios():
     raise HTTPException(status_code=500, detail="Failed to generate scenarios")
 
 @app.post("/api/chat/turn")
-async def process_chat_turn(turn: ChatTurn):
+async def process_chat_turn(turn: ChatTurn, background_tasks: BackgroundTasks):
     settings = storage.get_settings()
     scenario = storage.get_scenario(turn.scenario_id)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
         
     # Get or create history
-    if turn.scenario_id not in active_chats:
-        active_chats[turn.scenario_id] = storage.start_conversation(turn.scenario_id)
-        
-    history_id = active_chats[turn.scenario_id]
+    history_id = storage.get_incomplete_conversation(turn.scenario_id)
+    if not history_id:
+        history_id = storage.start_conversation(turn.scenario_id)
     
     # Save user message
     storage.append_conversation(history_id, "User", turn.message)
@@ -116,19 +114,31 @@ async def process_chat_turn(turn: ChatTurn):
     if is_reached:
         storage.mark_conversation_completed(history_id)
         storage.update_settings(add_score=1)
-        del active_chats[turn.scenario_id]
+        background_tasks.add_task(generate_replacement_scenario, settings)
         
     return {
         "bot_message": bot_response,
         "status": status
     }
 
+async def generate_replacement_scenario(settings):
+    try:
+        new_scen = await ollama_client.generate_scenarios(
+            settings['model'], 
+            settings['practice_language'], 
+            settings['ui_language'],
+            count=1
+        )
+        if new_scen:
+            storage.save_scenarios(new_scen, clear=False)
+    except Exception as e:
+        print(f"Failed to generate replacement scenario: {e}")
+
 @app.post("/api/chat/abandon")
 async def abandon_chat(abandon: ChatAbandon):
-    if abandon.scenario_id in active_chats:
-        history_id = active_chats[abandon.scenario_id]
+    history_id = storage.get_incomplete_conversation(abandon.scenario_id)
+    if history_id:
         storage.abandon_conversation(history_id)
-        del active_chats[abandon.scenario_id]
     return {"success": True}
 
 @app.post("/api/chat/hint")
@@ -138,7 +148,7 @@ async def get_hint(abandon: ChatAbandon):
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
         
-    history_id = active_chats.get(abandon.scenario_id)
+    history_id = storage.get_incomplete_conversation(abandon.scenario_id)
     history = storage.get_conversation(history_id) if history_id else []
     
     hint = await ollama_client.generate_hint(
@@ -161,6 +171,4 @@ app.mount("/api/clipart", StaticFiles(directory="data/clipart"), name="clipart")
 @app.get("/")
 @app.get("/index.html")
 def root():
-    with open("frontend/index.html", "r", encoding="utf-8") as f:
-        from fastapi.responses import HTMLResponse
-        return HTMLResponse(content=f.read())
+    return FileResponse("frontend/index.html")

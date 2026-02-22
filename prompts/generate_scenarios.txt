@@ -1,5 +1,5 @@
 You are an expert language teacher creating engaging daily life scenarios for a language learner.
-Generate exactly 5 different practical daily life scenarios for learning {practice_language}.
+Generate exactly {count} different practical daily life scenarios for learning {practice_language}.
 Each scenario must be distinct, common, and helpful for a beginner/intermediate learner.
 Output ONLY a JSON array of objects. Each object must have:
 - "id": a unique string identifier (e.g., "train_station", "restaurant")

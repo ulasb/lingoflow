@@ -27,9 +27,8 @@ def init_db():
         cursor.execute("INSERT INTO settings (id) VALUES (1)")
         
     # Active Scenarios table
-    cursor.execute("DROP TABLE IF EXISTS active_scenarios")
     cursor.execute("""
-        CREATE TABLE active_scenarios (
+        CREATE TABLE IF NOT EXISTS active_scenarios (
             id TEXT PRIMARY KEY,
             setting TEXT,
             goal TEXT,
@@ -43,9 +42,20 @@ def init_db():
         CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             scenario_id TEXT,
-            transcripts TEXT,
             completed BOOLEAN DEFAULT 0,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Messages table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            history_id INTEGER,
+            speaker TEXT,
+            content TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(history_id) REFERENCES history(id) ON DELETE CASCADE
         )
     """)
     
@@ -89,14 +99,15 @@ def update_settings(theme=None, model=None, practice_language=None, ui_language=
         conn.commit()
     conn.close()
 
-def save_scenarios(scenarios):
+def save_scenarios(scenarios, clear=True):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM active_scenarios")
+    if clear:
+        cursor.execute("DELETE FROM active_scenarios")
     
     for s in scenarios:
         cursor.execute(
-            "INSERT INTO active_scenarios (id, setting, goal, description, clipart) VALUES (?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO active_scenarios (id, setting, goal, description, clipart) VALUES (?, ?, ?, ?, ?)",
             (s['id'], s['setting'], s['goal'], s.get('description', ''), s['clipart'])
         )
     conn.commit()
@@ -120,8 +131,8 @@ def start_conversation(scenario_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO history (scenario_id, transcripts) VALUES (?, ?)",
-        (scenario_id, json.dumps([]))
+        "INSERT INTO history (scenario_id) VALUES (?)",
+        (scenario_id,)
     )
     last_id = cursor.lastrowid
     conn.commit()
@@ -131,34 +142,39 @@ def start_conversation(scenario_id):
 def append_conversation(history_id, speaker, content):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    row = cursor.execute("SELECT transcripts FROM history WHERE id = ?", (history_id,)).fetchone()
-    
-    if row:
-        transcripts = json.loads(row[0])
-        transcripts.append({"speaker": speaker, "content": content})
-        cursor.execute("UPDATE history SET transcripts = ? WHERE id = ?", (json.dumps(transcripts), history_id))
-        conn.commit()
+    cursor.execute("INSERT INTO messages (history_id, speaker, content) VALUES (?, ?, ?)", (history_id, speaker, content))
+    conn.commit()
     conn.close()
 
 def get_conversation(history_id):
     conn = sqlite3.connect(DB_PATH)
-    row = conn.execute("SELECT transcripts FROM history WHERE id = ?", (history_id,)).fetchone()
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT speaker, content FROM messages WHERE history_id = ? ORDER BY id ASC", (history_id,)).fetchall()
     conn.close()
-    return json.loads(row[0]) if row else []
+    return [dict(r) for r in rows]
     
 def mark_conversation_completed(history_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("UPDATE history SET completed = 1 WHERE id = ?", (history_id,))
     
-    # remove the scenario so it gets regenerated later if needed, or simply let frontend regenerate all
-    # For now we'll just keep it in active_scenarios and let the user re-generate explicitly or when empty.
+    scenario_row = cursor.execute("SELECT scenario_id FROM history WHERE id = ?", (history_id,)).fetchone()
+    if scenario_row:
+        cursor.execute("DELETE FROM active_scenarios WHERE id = ?", (scenario_row[0],))
+        
     conn.commit()
     conn.close()
 
 def abandon_conversation(history_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    cursor.execute("DELETE FROM messages WHERE history_id = ?", (history_id,))
     cursor.execute("DELETE FROM history WHERE id = ?", (history_id,))
     conn.commit()
     conn.close()
+
+def get_incomplete_conversation(scenario_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT id FROM history WHERE scenario_id = ? AND completed = 0 ORDER BY id DESC LIMIT 1", (scenario_id,)).fetchone()
+    conn.close()
+    return row[0] if row else None

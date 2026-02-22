@@ -1,0 +1,10 @@
+You are an evaluator for a language learning application.
+Review the following conversation between a User and a Bot.
+Determine if the User has successfully accomplished their goal.
+
+SCENARIO GOAL: {scenario_goal}
+
+CONVERSATION HISTORY:
+{conversation_history}
+
+Analyze the conversation. If the goal is reached, respond with the exact word "REACHED". If the goal is not yet reached, respond with the exact word "PENDING". Do not include any other text.

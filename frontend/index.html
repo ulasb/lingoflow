@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LingoFlow</title>
+    <!-- We adapt some aesthetics from debating-llms -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+
+    <!-- Markdown parsing (if needed) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+</head>
+
+<body data-theme="system">
+    <div class="container">
+        <header>
+            <h1>LingoFlow</h1>
+            <div class="header-controls">
+                <span id="score-display">Score: 0</span>
+                <button id="settingsBtn" onclick="openSettings()">Settings</button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD SECTION -->
+        <section class="controls" id="dashboard">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h2 style="margin: 0;">Daily Scenarios</h2>
+                <button onclick="generateScenarios()" class="secondary" id="regenerateBtn">Regenerate</button>
+            </div>
+
+            <div id="scenarios-loading" class="typing-indicator hidden"
+                style="margin-bottom: 15px; border-radius: 8px;">
+                <span id="scenarios-loading-text">Generating fresh scenarios</span><span class="dots">...</span>
+            </div>
+
+            <div id="error-banner-dashboard" class="error-banner hidden"
+                style="margin-bottom: 15px; border-radius: 8px;"></div>
+
+            <div id="scenarios-container" class="scenarios-grid">
+                <!-- Scenarios injected via JS -->
+            </div>
+        </section>
+
+        <!-- CHAT INTERFACE SECTION -->
+        <section class="debate-arena hidden" id="chat">
+            <div class="chat-header">
+                <div class="img-wrapper">
+                    <img id="scenario-clipart" src="" alt="Scenario Image">
+                </div>
+                <div class="scenario-details">
+                    <h3 id="scenario-setting">Setting</h3>
+                    <p id="scenario-goal">Goal</p>
+                    <p id="scenario-description"
+                        style="margin-top: 8px; font-size: 0.9rem; line-height: 1.4; color: var(--text-secondary);"></p>
+                </div>
+                <div class="actions">
+                    <button class="secondary" onclick="abandonChat()">Abandon</button>
+                </div>
+            </div>
+
+            <div id="error-banner" class="error-banner hidden"></div>
+
+            <div id="messages" class="messages-container">
+                <!-- Messages go here -->
+            </div>
+
+            <div id="typing-indicator" class="typing-indicator hidden">
+                <span id="typer-name">Bot</span> is thinking<span class="dots">...</span>
+            </div>
+
+            <div class="chat-input-row" id="chat-input-area">
+                <input type="text" id="userInput" placeholder="Type your response in the practice language..."
+                    onkeypress="handleEnter(event)">
+                <button id="sendBtn" onclick="sendMessage()">Send</button>
+                <button id="hintBtn" class="secondary hint-btn" onclick="getHint()">Hint</button>
+            </div>
+        </section>
+
+        <!-- SETTINGS MODAL -->
+        <div id="settingsModal" class="modal hidden">
+            <div class="modal-content controls">
+                <h2>Settings</h2>
+                <div class="input-group full-width">
+                    <label>App Theme</label>
+                    <select id="themeSelect">
+                        <option value="system">System Default</option>
+                        <option value="light">Light Mode</option>
+                        <option value="dark">Dark Mode</option>
+                    </select>
+                </div>
+                <div class="input-group full-width">
+                    <label>Language Setup</label>
+                    <select id="practiceLangSelect">
+                        <option value="Japanese">Japanese</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="Turkish">Turkish</option>
+                        <option value="Chinese">Chinese</option>
+                    </select>
+                </div>
+                <div class="input-group full-width">
+                    <label>UI Language</label>
+                    <select id="uiLangSelect">
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="Turkish">Turkish</option>
+                        <option value="Chinese">Chinese</option>
+                        <option value="Japanese">Japanese</option>
+                    </select>
+                </div>
+                <div class="input-group full-width">
+                    <label>Ollama Model</label>
+                    <select id="modelSelect">
+                        <option value="gemma3:4b">gemma3:4b</option>
+                        <!-- Should be populated from API -->
+                    </select>
+                </div>
+
+                <div class="actions" style="margin-top: 20px; justify-content: flex-end;">
+                    <button class="secondary" onclick="closeSettings()">Cancel</button>
+                    <button onclick="saveSettings()">Save Configuration</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HINT MODAL -->
+        <div id="hintModal" class="modal hidden">
+            <div class="modal-content controls">
+                <h2>Hint</h2>
+                <div id="hint-content" class="messages-container" style="padding:0;">
+                    Loading hint...
+                </div>
+                <div class="actions" style="margin-top: 20px; justify-content: flex-end;">
+                    <button class="secondary" onclick="closeHint()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

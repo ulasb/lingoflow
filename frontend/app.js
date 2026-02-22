@@ -1,0 +1,246 @@
+let currentScenarioId = null;
+
+window.addEventListener('DOMContentLoaded', async () => {
+    await loadSettings();
+    await loadScenarios();
+});
+
+function applyTheme(theme) {
+    if (theme === 'system') {
+        const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+        document.body.setAttribute('data-theme', darkMq.matches ? 'dark' : 'light');
+    } else {
+        document.body.setAttribute('data-theme', theme);
+    }
+}
+
+async function loadSettings() {
+    try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+
+        document.getElementById('themeSelect').value = data.theme || 'system';
+        document.getElementById('modelSelect').value = data.model || 'gemma3:4b';
+        document.getElementById('practiceLangSelect').value = data.practice_language || 'Japanese';
+        document.getElementById('uiLangSelect').value = data.ui_language || 'English';
+        document.getElementById('score-display').innerText = `Score: ${data.score || 0}`;
+
+        applyTheme(data.theme || 'system');
+    } catch (e) {
+        console.warn("Failed loading settings, using defaults.");
+        applyTheme('system');
+    }
+}
+
+async function saveSettings() {
+    const theme = document.getElementById('themeSelect').value;
+    const model = document.getElementById('modelSelect').value;
+    const practice_language = document.getElementById('practiceLangSelect').value;
+    const ui_language = document.getElementById('uiLangSelect').value;
+
+    try {
+        await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme, model, practice_language, ui_language })
+        });
+        applyTheme(theme);
+        closeSettings();
+        loadScenarios();
+    } catch (e) {
+        console.error(e);
+        alert("Failed to save settings");
+    }
+}
+
+async function loadScenarios() {
+    const container = document.getElementById('scenarios-container');
+    const loadingObj = document.getElementById('scenarios-loading');
+    const errorBanner = document.getElementById('error-banner-dashboard');
+    const regenBtn = document.getElementById('regenerateBtn');
+
+    container.innerHTML = '';
+    errorBanner.classList.add('hidden');
+    loadingObj.classList.remove('hidden');
+    regenBtn.disabled = true;
+
+    try {
+        const res = await fetch('/api/scenarios');
+        const data = await res.json();
+
+        loadingObj.classList.add('hidden');
+        regenBtn.disabled = false;
+
+        if (!data.scenarios || data.scenarios.length === 0) {
+            // Automatically generate scenarios if there are none, removing the burden from the server startup!
+            generateScenarios();
+            return;
+        }
+
+        data.scenarios.forEach(scen => {
+            const card = document.createElement('div');
+            card.className = 'scenario-card';
+            card.onclick = () => startChat(scen);
+
+            const img = document.createElement('img');
+            img.src = `/api/clipart/${scen.clipart}`;
+
+            const textDiv = document.createElement('div');
+            const h3 = document.createElement('h3');
+            h3.innerText = scen.setting;
+            const p = document.createElement('p');
+            p.innerText = scen.goal;
+
+            textDiv.appendChild(h3);
+            textDiv.appendChild(p);
+            card.appendChild(img);
+            card.appendChild(textDiv);
+            container.appendChild(card);
+        });
+    } catch (e) {
+        loadingObj.classList.add('hidden');
+        regenBtn.disabled = false;
+        errorBanner.innerText = 'Failed to load scenarios. Make sure backend is running.';
+        errorBanner.classList.remove('hidden');
+    }
+}
+
+async function generateScenarios() {
+    const loadingObj = document.getElementById('scenarios-loading');
+    const regenBtn = document.getElementById('regenerateBtn');
+    const container = document.getElementById('scenarios-container');
+    const errorBanner = document.getElementById('error-banner-dashboard');
+
+    container.innerHTML = '';
+    errorBanner.classList.add('hidden');
+    loadingObj.classList.remove('hidden');
+    regenBtn.disabled = true;
+
+    try {
+        await fetch('/api/scenarios/generate', { method: 'POST' });
+        await loadScenarios();
+    } catch (e) {
+        loadingObj.classList.add('hidden');
+        regenBtn.disabled = false;
+        errorBanner.innerText = 'Error generating scenarios: model took too long or failed.';
+        errorBanner.classList.remove('hidden');
+    }
+}
+
+function startChat(scenario) {
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('chat').classList.remove('hidden');
+
+    document.getElementById('scenario-clipart').src = `/api/clipart/${scenario.clipart}`;
+    document.getElementById('scenario-setting').innerText = scenario.setting;
+    document.getElementById('scenario-goal').innerText = scenario.goal;
+    document.getElementById('scenario-description').innerText = scenario.description || '';
+
+    currentScenarioId = scenario.id;
+    document.getElementById('messages').innerHTML = '';
+}
+
+async function abandonChat() {
+    if (!confirm("Are you sure you want to abandon this chat?")) return;
+    try {
+        await fetch(`/api/chat/abandon`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scenario_id: currentScenarioId })
+        });
+    } catch (e) { }
+
+    document.getElementById('chat').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    currentScenarioId = null;
+}
+
+function handleEnter(e) {
+    if (e.key === 'Enter') sendMessage();
+}
+
+async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    input.value = '';
+    appendMessage('User', msg);
+    document.getElementById('typing-indicator').classList.remove('hidden');
+
+    try {
+        const res = await fetch('/api/chat/turn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                scenario_id: currentScenarioId,
+                message: msg
+            })
+        });
+        const data = await res.json();
+
+        document.getElementById('typing-indicator').classList.add('hidden');
+
+        if (data.bot_message) {
+            appendMessage('Bot', data.bot_message);
+        }
+
+        if (data.status === 'REACHED') {
+            setTimeout(() => {
+                alert("Goal reached! You did great! Back to dashboard.");
+                document.getElementById('chat').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadSettings();
+                loadScenarios();
+            }, 1000);
+        }
+    } catch (e) {
+        document.getElementById('typing-indicator').classList.add('hidden');
+        alert("Failed to get response");
+    }
+}
+
+function appendMessage(speaker, content) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message ${speaker.toLowerCase()}`;
+
+    const label = document.createElement('span');
+    label.className = 'role-label';
+    label.innerText = speaker;
+
+    const text = document.createElement('div');
+    text.className = 'content';
+    if (typeof DOMPurify !== 'undefined' && typeof marked !== 'undefined') {
+        text.innerHTML = DOMPurify.sanitize(marked.parse(content));
+    } else {
+        text.innerHTML = content;
+    }
+
+    div.appendChild(label);
+    div.appendChild(text);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+async function getHint() {
+    document.getElementById('typing-indicator').classList.remove('hidden');
+    try {
+        const res = await fetch('/api/chat/hint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scenario_id: currentScenarioId })
+        });
+        const data = await res.json();
+        document.getElementById('typing-indicator').classList.add('hidden');
+        document.getElementById('hint-content').innerHTML = DOMPurify.sanitize(marked.parse(data.hint));
+        document.getElementById('hintModal').classList.remove('hidden');
+    } catch (e) {
+        document.getElementById('typing-indicator').classList.add('hidden');
+        alert("Hint failed to load");
+    }
+}
+
+function closeHint() { document.getElementById('hintModal').classList.add('hidden'); }
+function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }

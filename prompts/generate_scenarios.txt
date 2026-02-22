@@ -1,0 +1,11 @@
+You are an expert language teacher creating engaging daily life scenarios for a language learner.
+Generate exactly 5 different practical daily life scenarios for learning {practice_language}.
+Each scenario must be distinct, common, and helpful for a beginner/intermediate learner.
+Output ONLY a JSON array of objects. Each object must have:
+- "id": a unique string identifier (e.g., "train_station", "restaurant")
+- "setting": a brief description of the setting in {ui_language}
+- "goal": a clear, achievable goal for the conversation in {ui_language}
+- "description": a short paragraph (2-3 sentences) in {ui_language} that clearly sets the environment, describes what it looks like, and specifies exactly who the user will be talking to (e.g., a waiter, a store clerk).
+- "clipart": a descriptive filename for a clipart to associate with this scenario (e.g., "train_station_ticket_counter.png", "convenience_store_snack_aisle.png", "florist_shop.png"). If no specific thematic clipart seems appropriate, MUST use "default_conversation.png"
+
+Ensure the output is valid JSON and nothing else.

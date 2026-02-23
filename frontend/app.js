@@ -272,7 +272,7 @@ async function openHistory() {
             btn.className = 'secondary';
             btn.style.textAlign = 'left';
             btn.style.width = '100%';
-            btn.innerHTML = `<strong>${item.scenario_id.replace(/_/g, ' ')}</strong> - ${date}`;
+            btn.innerHTML = `<strong>${DOMPurify.sanitize(item.scenario_id.replace(/_/g, ' '))}</strong> - ${date}`;
             btn.onclick = () => viewHistoryItem(item.id);
             container.appendChild(btn);
         });

@@ -161,6 +161,17 @@ async def get_hint(abandon: ChatAbandon):
     )
     return {"hint": hint}
 
+@app.get("/api/history")
+async def get_history():
+    return {"history": storage.get_completed_conversations()}
+
+@app.get("/api/history/{history_id}")
+async def get_history_detail(history_id: int):
+    conversation = storage.get_conversation(history_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"conversation": conversation}
+
 # --- Static files matching ---
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 

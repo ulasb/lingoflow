@@ -178,3 +178,10 @@ def get_incomplete_conversation(scenario_id):
     row = conn.execute("SELECT id FROM history WHERE scenario_id = ? AND completed = 0 ORDER BY id DESC LIMIT 1", (scenario_id,)).fetchone()
     conn.close()
     return row[0] if row else None
+
+def get_completed_conversations():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT id, scenario_id, timestamp FROM history WHERE completed = 1 ORDER BY id DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

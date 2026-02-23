@@ -244,3 +244,88 @@ async function getHint() {
 function closeHint() { document.getElementById('hintModal').classList.add('hidden'); }
 function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
 function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+// --- HISTORY LOGIC ---
+
+async function openHistory() {
+    document.getElementById('historyModal').classList.remove('hidden');
+    const container = document.getElementById('history-container');
+    const loading = document.getElementById('history-loading');
+
+    container.innerHTML = '';
+    loading.classList.remove('hidden');
+
+    try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+
+        loading.classList.add('hidden');
+
+        if (!data.history || data.history.length === 0) {
+            container.innerHTML = '<div style="color: var(--text-secondary);">No completed conversations yet.</div>';
+            return;
+        }
+
+        data.history.forEach(item => {
+            const date = new Date(item.timestamp).toLocaleString();
+            const btn = document.createElement('button');
+            btn.className = 'secondary';
+            btn.style.textAlign = 'left';
+            btn.style.width = '100%';
+            btn.innerHTML = `<strong>${item.scenario_id.replace(/_/g, ' ')}</strong> - ${date}`;
+            btn.onclick = () => viewHistoryItem(item.id);
+            container.appendChild(btn);
+        });
+    } catch (e) {
+        loading.classList.add('hidden');
+        container.innerHTML = '<div class="error-banner">Failed to load history</div>';
+    }
+}
+
+function closeHistory() {
+    document.getElementById('historyModal').classList.add('hidden');
+}
+
+async function viewHistoryItem(historyId) {
+    document.getElementById('historyModal').classList.add('hidden');
+    document.getElementById('historyDetailModal').classList.remove('hidden');
+    const container = document.getElementById('history-detail-messages');
+    container.innerHTML = 'Loading transcript...';
+
+    try {
+        const res = await fetch(`/api/history/${historyId}`);
+        const data = await res.json();
+
+        container.innerHTML = '';
+
+        if (!data.conversation || data.conversation.length === 0) {
+            container.innerHTML = 'Empty transcript.';
+            return;
+        }
+
+        data.conversation.forEach(turn => {
+            const div = document.createElement('div');
+            div.className = `message ${turn.speaker.toLowerCase()}`;
+
+            const label = document.createElement('span');
+            label.className = 'role-label';
+            label.innerText = turn.speaker;
+
+            const text = document.createElement('div');
+            text.className = 'content';
+            text.innerHTML = DOMPurify.sanitize(marked.parse(turn.content));
+
+            div.appendChild(label);
+            div.appendChild(text);
+            container.appendChild(div);
+        });
+
+    } catch (e) {
+        container.innerHTML = '<div class="error-banner">Failed to load transcript</div>';
+    }
+}
+
+function closeHistoryDetail() {
+    document.getElementById('historyDetailModal').classList.add('hidden');
+    document.getElementById('historyModal').classList.remove('hidden');
+}

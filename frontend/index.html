@@ -22,6 +22,7 @@
             <h1>LingoFlow</h1>
             <div class="header-controls">
                 <span id="score-display">Score: 0</span>
+                <button id="historyBtn" class="secondary" onclick="openHistory()">History</button>
                 <button id="settingsBtn" onclick="openSettings()">Settings</button>
             </div>
         </header>
@@ -136,6 +137,35 @@
                 </div>
                 <div class="actions" style="margin-top: 20px; justify-content: flex-end;">
                     <button class="secondary" onclick="closeHint()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY LIST MODAL -->
+        <div id="historyModal" class="modal hidden">
+            <div class="modal-content controls" style="max-height: 80vh; overflow-y: auto;">
+                <h2>Completed Conversations</h2>
+                <div id="history-loading" class="hidden">Loading history...</div>
+                <div id="history-container" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <!-- History items injected here -->
+                </div>
+                <div class="actions" style="margin-top: 20px; justify-content: flex-end;">
+                    <button class="secondary" onclick="closeHistory()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY DETAIL MODAL -->
+        <div id="historyDetailModal" class="modal hidden">
+            <div class="modal-content controls"
+                style="max-width: 800px; max-height: 80vh; display: flex; flex-direction: column;">
+                <h2>Conversation Transcript</h2>
+                <div id="history-detail-messages" class="messages-container"
+                    style="flex: 1; padding: 10px; margin-top: 10px; background: var(--bg-tertiary);">
+                    <!-- Messages injected here -->
+                </div>
+                <div class="actions" style="margin-top: 20px; justify-content: flex-end;">
+                    <button class="secondary" onclick="closeHistoryDetail()">Back to History</button>
                 </div>
             </div>
         </div>

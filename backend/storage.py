@@ -156,10 +156,10 @@ def get_conversation(history_id):
         try:
             row = conn.execute("SELECT transcripts FROM history WHERE id = ?", (history_id,)).fetchone()
             if row and row['transcripts']:
-                import json
-                conn.close()
                 return json.loads(row['transcripts'])
-        except Exception:
+        except Exception as e:
+            # It's better to log exceptions than to ignore them silently.
+            print(f"Could not retrieve conversation from old format for history_id={history_id}: {e}")
             pass
             
     conn.close()

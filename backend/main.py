@@ -161,6 +161,16 @@ async def get_hint(abandon: ChatAbandon):
     )
     return {"hint": hint}
 
+@app.get("/api/history")
+async def get_history():
+    return {"history": storage.get_completed_conversations()}
+
+@app.get("/api/history/{history_id}")
+async def get_history_detail(history_id: int):
+    # Simply retrieve the array. The history_id acts as the existence check, and an empty list is valid.
+    conversation = storage.get_conversation(history_id)
+    return {"conversation": conversation}
+
 # --- Static files matching ---
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 

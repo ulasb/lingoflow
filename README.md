@@ -12,10 +12,11 @@ LingoFlow is a desktop-like web app that allows you to engage in short, scenario
 *   **Infrastructure Strategy**: Scaffolding complete; project runs fully offline hitting a local Ollama process.
 *   **Storage Framework**: SQLite (`lingoflow.db`) efficiently manages state, storing active scenarios, chat logs, user score, and theme configurations. 
 *   **UI/UX Aesthetic**: Implemented the primary Dashboard and Chat interfaces utilizing high-end, responsive aesthetics adapted from previous desktop-like local projects. Contains auto-resizing dark/light modes.
-*   **Workflow Integration**: 
+*   **Workflow Integration**:
      - Scenario generation pulls from `.txt` templates containing dynamic targets (setting the `description`, `goal`, and mapping a thematic `clipart` automatically).
-     - Chat interactions successfully trigger LLM evaluations on each turn to deterministically check if the user has reached their assigned `goal`. 
+     - Chat interactions successfully trigger LLM evaluations on each turn to deterministically check if the user has reached their assigned `goal`.
+     - Integrated a comprehensive **History** log that tracks completed chat sessions and rendering detailed historical chat transcripts for review.
+*   **Prompt Engineering**: Enhanced Bot Resistance constraints. The bot now explicitly waits passively for a user to negotiate requests naturally instead of prematurely handing them the goal scenario.
 
 ## Next Steps / Known Issues
 *   **Conversation Clipart Generation**: The current offline system gracefully defaults to simple `.png` squares when missing maps. Next steps include using offline image generation scripts to batch hundreds of varied contextual cliparts (e.g. `florist`, `subway_platform`) for future scenarios to pull dynamically.
-*   **Bot Resistance**: The Chat Prompt logic needs to be significantly tightened. In current testing, the bot roleplays slightly too permissively and accommodates the scenario goal immediately (e.g., offering to sell snacks even if the user just responds with "Hi", which tricks the evaluator into automatically terminating and completing the chat successfully!). We will focus heavily on refining the prompt to make the bot wait strictly for the user to explicitly negotiate their own goal.

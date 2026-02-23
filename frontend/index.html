@@ -22,6 +22,7 @@
             <h1>LingoFlow</h1>
             <div class="header-controls">
                 <span id="score-display">Score: 0</span>
+                <button id="historyBtn" class="secondary" onclick="openHistory()">History</button>
                 <button id="settingsBtn" onclick="openSettings()">Settings</button>
             </div>
         </header>
@@ -120,7 +121,7 @@
                     </select>
                 </div>
 
-                <div class="actions" style="margin-top: 20px; justify-content: flex-end;">
+                <div class="actions modal-actions">
                     <button class="secondary" onclick="closeSettings()">Cancel</button>
                     <button onclick="saveSettings()">Save Configuration</button>
                 </div>
@@ -131,11 +132,38 @@
         <div id="hintModal" class="modal hidden">
             <div class="modal-content controls">
                 <h2>Hint</h2>
-                <div id="hint-content" class="messages-container" style="padding:0;">
+                <div id="hint-content" class="messages-container hint-messages-container">
                     Loading hint...
                 </div>
-                <div class="actions" style="margin-top: 20px; justify-content: flex-end;">
+                <div class="actions modal-actions">
                     <button class="secondary" onclick="closeHint()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY LIST MODAL -->
+        <div id="historyModal" class="modal hidden">
+            <div class="modal-content controls history-list-content">
+                <h2>Completed Conversations</h2>
+                <div id="history-loading" class="hidden">Loading history...</div>
+                <div id="history-container" class="history-items-container">
+                    <!-- History items injected here -->
+                </div>
+                <div class="actions modal-actions">
+                    <button class="secondary" onclick="closeHistory()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY DETAIL MODAL -->
+        <div id="historyDetailModal" class="modal hidden">
+            <div class="modal-content controls history-detail-content">
+                <h2>Conversation Transcript</h2>
+                <div id="history-detail-messages" class="messages-container history-messages-bg">
+                    <!-- Messages injected here -->
+                </div>
+                <div class="actions modal-actions">
+                    <button class="secondary" onclick="closeHistoryDetail()">Back to History</button>
                 </div>
             </div>
         </div>

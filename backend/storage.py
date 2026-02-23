@@ -150,6 +150,18 @@ def get_conversation(history_id):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = conn.execute("SELECT speaker, content FROM messages WHERE history_id = ? ORDER BY id ASC", (history_id,)).fetchall()
+    
+    # Backwards compatibility for old JSON blob logic (conversations completed before schema update)
+    if not rows:
+        try:
+            row = conn.execute("SELECT transcripts FROM history WHERE id = ?", (history_id,)).fetchone()
+            if row and row['transcripts']:
+                import json
+                conn.close()
+                return json.loads(row['transcripts'])
+        except Exception:
+            pass
+            
     conn.close()
     return [dict(r) for r in rows]
     

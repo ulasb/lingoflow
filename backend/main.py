@@ -167,9 +167,8 @@ async def get_history():
 
 @app.get("/api/history/{history_id}")
 async def get_history_detail(history_id: int):
+    # Simply retrieve the array. The history_id acts as the existence check, and an empty list is valid.
     conversation = storage.get_conversation(history_id)
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
     return {"conversation": conversation}
 
 # --- Static files matching ---

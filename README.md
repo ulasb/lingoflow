@@ -12,6 +12,7 @@ LingoFlow is a desktop-like web app that allows you to engage in short, scenario
 *   **Infrastructure Strategy**: Scaffolding complete; project runs fully offline hitting a local Ollama process.
 *   **Storage Framework**: SQLite (`lingoflow.db`) efficiently manages state, storing active scenarios, chat logs, user score, and theme configurations. 
 *   **UI/UX Aesthetic**: Implemented the primary Dashboard and Chat interfaces utilizing high-end, responsive aesthetics adapted from previous desktop-like local projects. Contains auto-resizing dark/light modes.
+*   **Workflow Integration**:
      - Scenario generation pulls from `.txt` templates containing dynamic targets (setting the `description`, `goal`, and mapping a thematic `clipart` automatically).
      - Chat interactions successfully trigger LLM evaluations on each turn to deterministically check if the user has reached their assigned `goal`.
      - Integrated a comprehensive **History** log that tracks completed chat sessions and rendering detailed historical chat transcripts for review.

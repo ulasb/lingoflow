@@ -518,3 +518,9 @@ rt {
 [data-theme="light"] .history-messages-bg {
     background: rgba(0, 0, 0, 0.02);
 }
+
+.setting-help-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}

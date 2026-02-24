@@ -20,12 +20,16 @@ async function loadSettings() {
         const data = await res.json();
 
         document.getElementById('themeSelect').value = data.theme || 'system';
-        document.getElementById('modelSelect').value = data.model || 'gemma3:4b';
         document.getElementById('practiceLangSelect').value = data.practice_language || 'Japanese';
         document.getElementById('uiLangSelect').value = data.ui_language || 'English';
         document.getElementById('score-display').innerText = `Score: ${data.score || 0}`;
 
+        const modelToSelect = data.model || 'gemma3:4b';
+        document.getElementById('modelSelect').value = modelToSelect;
+
         applyTheme(data.theme || 'system');
+
+        await loadModels(modelToSelect);
     } catch (e) {
         console.warn("Failed loading settings, using defaults.");
         applyTheme('system');
@@ -50,6 +54,34 @@ async function saveSettings() {
     } catch (e) {
         console.error(e);
         alert("Failed to save settings");
+    }
+}
+
+async function loadModels(selectedModel) {
+    try {
+        const res = await fetch('/api/models');
+        const data = await res.json();
+        const select = document.getElementById('modelSelect');
+        if (data.models && data.models.length > 0) {
+            select.innerHTML = '';
+            data.models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = m;
+                select.appendChild(opt);
+            });
+            if (data.models.includes(selectedModel)) {
+                select.value = selectedModel;
+            } else {
+                const opt = document.createElement('option');
+                opt.value = selectedModel;
+                opt.innerText = selectedModel;
+                select.appendChild(opt);
+                select.value = selectedModel;
+            }
+        }
+    } catch (e) {
+        console.warn("Failed loading models.");
     }
 }
 

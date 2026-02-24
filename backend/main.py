@@ -54,6 +54,11 @@ async def update_settings(update: SettingsUpdate):
 async def get_scenarios():
     return {"scenarios": storage.get_scenarios()}
 
+@app.get("/api/models")
+async def get_models():
+    models = await ollama_client.get_available_models()
+    return {"models": models}
+
 @app.post("/api/scenarios/generate")
 async def generate_scenarios():
     settings = storage.get_settings()

@@ -20,12 +20,16 @@ async function loadSettings() {
         const data = await res.json();
 
         document.getElementById('themeSelect').value = data.theme || 'system';
-        document.getElementById('modelSelect').value = data.model || 'gemma3:4b';
         document.getElementById('practiceLangSelect').value = data.practice_language || 'Japanese';
         document.getElementById('uiLangSelect').value = data.ui_language || 'English';
         document.getElementById('score-display').innerText = `Score: ${data.score || 0}`;
 
+        const modelToSelect = data.model || 'gemma3:4b';
+
         applyTheme(data.theme || 'system');
+
+        // loadModels will populate the select and set the correct value
+        await loadModels(modelToSelect);
     } catch (e) {
         console.warn("Failed loading settings, using defaults.");
         applyTheme('system');
@@ -50,6 +54,50 @@ async function saveSettings() {
     } catch (e) {
         console.error(e);
         alert("Failed to save settings");
+    }
+}
+
+async function loadModels(selectedModel) {
+    const select = document.getElementById('modelSelect');
+    // Always reset the dropdown so it never shows stale hardcoded HTML values
+    select.innerHTML = '';
+
+    try {
+        const res = await fetch('/api/models');
+        if (!res.ok) throw new Error('Failed to fetch models');
+        const data = await res.json();
+        const models = data.models || [];
+
+        // Populate whatever the API returned
+        models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.innerText = m.parameter_size ? `${m.name} (${m.parameter_size})` : m.name;
+            select.appendChild(opt);
+        });
+
+        // Always ensure the currently saved model is present and selected,
+        // even if Ollama returned an empty list or the model isn't in it.
+        const names = models.map(m => m.name);
+        if (selectedModel && !names.includes(selectedModel)) {
+            const opt = document.createElement('option');
+            opt.value = selectedModel;
+            opt.innerText = `${selectedModel} (saved)`;
+            select.appendChild(opt);
+        }
+        if (selectedModel) {
+            select.value = selectedModel;
+        }
+    } catch (e) {
+        console.warn("Failed loading models from API:", e);
+        // On failure, still show the saved model so the UI is consistent
+        if (selectedModel) {
+            const opt = document.createElement('option');
+            opt.value = selectedModel;
+            opt.innerText = `${selectedModel} (saved)`;
+            select.appendChild(opt);
+            select.value = selectedModel;
+        }
     }
 }
 
@@ -242,7 +290,14 @@ async function getHint() {
 }
 
 function closeHint() { document.getElementById('hintModal').classList.add('hidden'); }
-function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+
+async function openSettings() {
+    const settings = await fetch('/api/settings').then(r => r.json()).catch(() => ({}));
+    const currentModel = settings.model || document.getElementById('modelSelect').value || 'gemma3:4b';
+    document.getElementById('settingsModal').classList.remove('hidden');
+    await loadModels(currentModel);
+}
+
 function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
 
 // --- HISTORY LOGIC ---

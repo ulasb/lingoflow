@@ -28,12 +28,18 @@ def clean_json_response(response_text: str) -> str:
         response_text = response_text[:-3]
     return response_text.strip()
 
-async def get_available_models() -> List[str]:
+async def get_available_models() -> List[Dict]:
     try:
         res = await get_client().get(f"{OLLAMA_BASE_URL}/tags")
         if res.status_code == 200:
             data = res.json()
-            return [m['name'] for m in data.get('models', [])]
+            return [
+                {
+                    "name": m['name'],
+                    "parameter_size": m.get('details', {}).get('parameter_size', '')
+                }
+                for m in data.get('models', [])
+            ]
     except Exception:
         pass
     return []

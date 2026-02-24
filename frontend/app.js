@@ -25,10 +25,10 @@ async function loadSettings() {
         document.getElementById('score-display').innerText = `Score: ${data.score || 0}`;
 
         const modelToSelect = data.model || 'gemma3:4b';
-        document.getElementById('modelSelect').value = modelToSelect;
 
         applyTheme(data.theme || 'system');
 
+        // loadModels will populate the select and set the correct value
         await loadModels(modelToSelect);
     } catch (e) {
         console.warn("Failed loading settings, using defaults.");
@@ -58,30 +58,33 @@ async function saveSettings() {
 }
 
 async function loadModels(selectedModel) {
+    const select = document.getElementById('modelSelect');
     try {
         const res = await fetch('/api/models');
+        if (!res.ok) throw new Error('Failed to fetch models');
         const data = await res.json();
-        const select = document.getElementById('modelSelect');
         if (data.models && data.models.length > 0) {
             select.innerHTML = '';
             data.models.forEach(m => {
                 const opt = document.createElement('option');
-                opt.value = m;
-                opt.innerText = m;
+                opt.value = m.name;
+                opt.innerText = m.parameter_size ? `${m.name} (${m.parameter_size})` : m.name;
                 select.appendChild(opt);
             });
-            if (data.models.includes(selectedModel)) {
+            const names = data.models.map(m => m.name);
+            if (names.includes(selectedModel)) {
                 select.value = selectedModel;
-            } else {
+            } else if (selectedModel) {
+                // Current saved model not in list — add it so selection isn't lost
                 const opt = document.createElement('option');
                 opt.value = selectedModel;
-                opt.innerText = selectedModel;
+                opt.innerText = `${selectedModel} (saved)`;
                 select.appendChild(opt);
                 select.value = selectedModel;
             }
         }
     } catch (e) {
-        console.warn("Failed loading models.");
+        console.warn("Failed loading models from API:", e);
     }
 }
 
@@ -274,7 +277,14 @@ async function getHint() {
 }
 
 function closeHint() { document.getElementById('hintModal').classList.add('hidden'); }
-function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+
+async function openSettings() {
+    const settings = await fetch('/api/settings').then(r => r.json()).catch(() => ({}));
+    const currentModel = settings.model || document.getElementById('modelSelect').value || 'gemma3:4b';
+    document.getElementById('settingsModal').classList.remove('hidden');
+    await loadModels(currentModel);
+}
+
 function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
 
 // --- HISTORY LOGIC ---

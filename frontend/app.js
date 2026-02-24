@@ -59,32 +59,45 @@ async function saveSettings() {
 
 async function loadModels(selectedModel) {
     const select = document.getElementById('modelSelect');
+    // Always reset the dropdown so it never shows stale hardcoded HTML values
+    select.innerHTML = '';
+
     try {
         const res = await fetch('/api/models');
         if (!res.ok) throw new Error('Failed to fetch models');
         const data = await res.json();
-        if (data.models && data.models.length > 0) {
-            select.innerHTML = '';
-            data.models.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.name;
-                opt.innerText = m.parameter_size ? `${m.name} (${m.parameter_size})` : m.name;
-                select.appendChild(opt);
-            });
-            const names = data.models.map(m => m.name);
-            if (names.includes(selectedModel)) {
-                select.value = selectedModel;
-            } else if (selectedModel) {
-                // Current saved model not in list — add it so selection isn't lost
-                const opt = document.createElement('option');
-                opt.value = selectedModel;
-                opt.innerText = `${selectedModel} (saved)`;
-                select.appendChild(opt);
-                select.value = selectedModel;
-            }
+        const models = data.models || [];
+
+        // Populate whatever the API returned
+        models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.innerText = m.parameter_size ? `${m.name} (${m.parameter_size})` : m.name;
+            select.appendChild(opt);
+        });
+
+        // Always ensure the currently saved model is present and selected,
+        // even if Ollama returned an empty list or the model isn't in it.
+        const names = models.map(m => m.name);
+        if (selectedModel && !names.includes(selectedModel)) {
+            const opt = document.createElement('option');
+            opt.value = selectedModel;
+            opt.innerText = `${selectedModel} (saved)`;
+            select.appendChild(opt);
+        }
+        if (selectedModel) {
+            select.value = selectedModel;
         }
     } catch (e) {
         console.warn("Failed loading models from API:", e);
+        // On failure, still show the saved model so the UI is consistent
+        if (selectedModel) {
+            const opt = document.createElement('option');
+            opt.value = selectedModel;
+            opt.innerText = `${selectedModel} (saved)`;
+            select.appendChild(opt);
+            select.value = selectedModel;
+        }
     }
 }
 

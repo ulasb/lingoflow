@@ -82,7 +82,11 @@ async def process_chat_turn(turn: ChatTurn, background_tasks: BackgroundTasks):
     # Get or create history
     history_id = storage.get_incomplete_conversation(turn.scenario_id)
     if not history_id:
-        history_id = storage.start_conversation(turn.scenario_id)
+        history_id = storage.start_conversation(
+            turn.scenario_id,
+            practice_language=settings['practice_language'],
+            model=settings['model']
+        )
     
     # Save user message
     storage.append_conversation(history_id, "User", turn.message)
@@ -116,14 +120,30 @@ async def process_chat_turn(turn: ChatTurn, background_tasks: BackgroundTasks):
     
     status = "REACHED" if is_reached else "PENDING"
     
+    conversation_summary = None
     if is_reached:
+        # Get full history including the final bot message for accurate summary
+        full_history = storage.get_conversation(history_id)
         storage.mark_conversation_completed(history_id)
         storage.update_settings(add_score=1)
         background_tasks.add_task(generate_replacement_scenario, settings)
+        # Generate summary synchronously so it can be returned in the response
+        try:
+            conversation_summary = await ollama_client.generate_conversation_summary(
+                model=settings['model'],
+                practice_language=settings['practice_language'],
+                ui_language=settings['ui_language'],
+                goal=scenario['goal'],
+                history=full_history
+            )
+            storage.save_conversation_summary(history_id, conversation_summary)
+        except Exception as e:
+            print(f"Failed to generate conversation summary inline: {e}")
         
     return {
         "bot_message": bot_response,
-        "status": status
+        "status": status,
+        "summary": conversation_summary
     }
 
 async def generate_replacement_scenario(settings):
@@ -138,6 +158,8 @@ async def generate_replacement_scenario(settings):
             storage.save_scenarios(new_scen, clear=False)
     except Exception as e:
         print(f"Failed to generate replacement scenario: {e}")
+
+
 
 @app.post("/api/chat/abandon")
 async def abandon_chat(abandon: ChatAbandon):
@@ -175,6 +197,21 @@ async def get_history_detail(history_id: int):
     # Simply retrieve the array. The history_id acts as the existence check, and an empty list is valid.
     conversation = storage.get_conversation(history_id)
     return {"conversation": conversation}
+
+@app.get("/api/history/{history_id}/summary")
+async def get_history_summary(history_id: int):
+    summary = storage.get_conversation_summary(history_id)
+    return {"summary": summary}
+
+@app.delete("/api/history/{history_id}")
+async def delete_history_item(history_id: int):
+    storage.delete_conversation(history_id)
+    return {"success": True}
+
+@app.delete("/api/history")
+async def delete_all_history():
+    storage.delete_all_conversations()
+    return {"success": True}
 
 # --- Static files matching ---
 app.mount("/static", StaticFiles(directory="frontend"), name="static")

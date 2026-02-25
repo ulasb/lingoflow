@@ -70,6 +70,20 @@
                 <!-- Messages go here -->
             </div>
 
+            <!-- Inline post-session breakdown (shown after goal is reached) -->
+            <div id="chat-summary-panel" class="chat-summary-panel hidden">
+                <div class="chat-summary-header">
+                    <span>📊 Session Breakdown</span>
+                    <div id="chat-summary-loading" class="summary-loading">Generating breakdown<span
+                            class="dots"></span></div>
+                </div>
+                <div id="chat-summary-content" class="summary-content"></div>
+                <div class="chat-summary-footer">
+                    <button id="backToDashboardBtn" class="hidden" onclick="returnToDashboard()">Back to
+                        Dashboard</button>
+                </div>
+            </div>
+
             <div id="typing-indicator" class="typing-indicator hidden">
                 <span id="typer-name">Bot</span> is thinking<span class="dots">...</span>
             </div>
@@ -145,7 +159,10 @@
         <!-- HISTORY LIST MODAL -->
         <div id="historyModal" class="modal hidden">
             <div class="modal-content controls history-list-content">
-                <h2>Completed Conversations</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <h2 style="margin: 0;">Completed Conversations</h2>
+                    <button class="danger-btn" onclick="clearAllHistory()" title="Delete all history">Clear All</button>
+                </div>
                 <div id="history-loading" class="hidden">Loading history...</div>
                 <div id="history-container" class="history-items-container">
                     <!-- History items injected here -->
@@ -158,10 +175,26 @@
 
         <!-- HISTORY DETAIL MODAL -->
         <div id="historyDetailModal" class="modal hidden">
-            <div class="modal-content controls history-detail-content">
-                <h2>Conversation Transcript</h2>
-                <div id="history-detail-messages" class="messages-container history-messages-bg">
-                    <!-- Messages injected here -->
+            <div class="modal-content history-detail-content">
+                <div class="history-detail-columns">
+                    <!-- Left: transcript -->
+                    <div class="history-col history-col-transcript">
+                        <h2 class="history-col-heading">Conversation Transcript</h2>
+                        <div id="history-detail-messages" class="messages-container history-messages-bg">
+                            <!-- Messages injected here -->
+                        </div>
+                    </div>
+                    <!-- Right: breakdown -->
+                    <div class="history-col history-col-summary">
+                        <h2 class="history-col-heading">📊 Session Breakdown</h2>
+                        <div id="history-summary-section">
+                            <div id="history-summary-loading" class="summary-loading hidden">Loading<span
+                                    class="dots"></span></div>
+                            <div id="history-summary-content" class="summary-content">
+                                <!-- AI summary injected here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="actions modal-actions">
                     <button class="secondary" onclick="closeHistoryDetail()">Back to History</button>

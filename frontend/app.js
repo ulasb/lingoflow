@@ -186,6 +186,23 @@ function startChat(scenario) {
 
     currentScenarioId = scenario.id;
     document.getElementById('messages').innerHTML = '';
+
+    // Reset summary panel state for new chat
+    document.getElementById('chat-summary-panel').classList.add('hidden');
+    document.getElementById('chat-summary-content').innerHTML = '';
+    document.getElementById('backToDashboardBtn').classList.add('hidden');
+    document.getElementById('chat-input-area').classList.remove('hidden');
+    document.getElementById('userInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('hintBtn').disabled = false;
+}
+
+async function returnToDashboard() {
+    document.getElementById('chat').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    currentScenarioId = null;
+    await loadSettings();
+    await loadScenarios();
 }
 
 async function abandonChat() {
@@ -234,13 +251,30 @@ async function sendMessage() {
         }
 
         if (data.status === 'REACHED') {
-            setTimeout(() => {
-                alert("Goal reached! You did great! Back to dashboard.");
-                document.getElementById('chat').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
-                loadSettings();
-                loadScenarios();
-            }, 1000);
+            // Lock input
+            document.getElementById('userInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('hintBtn').disabled = true;
+            document.getElementById('chat-input-area').classList.add('hidden');
+
+            // Show the summary panel with a loading state
+            const panel = document.getElementById('chat-summary-panel');
+            const loading = document.getElementById('chat-summary-loading');
+            const content = document.getElementById('chat-summary-content');
+            panel.classList.remove('hidden');
+            loading.classList.remove('hidden');
+            content.innerHTML = '';
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            if (data.summary) {
+                loading.classList.add('hidden');
+                content.innerHTML = DOMPurify.sanitize(marked.parse(data.summary));
+            } else {
+                loading.classList.add('hidden');
+                content.innerHTML = '<em style="color: var(--text-secondary);">Summary could not be generated.</em>';
+            }
+
+            document.getElementById('backToDashboardBtn').classList.remove('hidden');
         }
     } catch (e) {
         document.getElementById('typing-indicator').classList.add('hidden');
@@ -302,6 +336,36 @@ function closeSettings() { document.getElementById('settingsModal').classList.ad
 
 // --- HISTORY LOGIC ---
 
+const LANGUAGE_FLAGS = {
+    'Japanese': '🇯🇵',
+    'Spanish': '🇪🇸',
+    'Turkish': '🇹🇷',
+    'Chinese': '🇨🇳',
+    'French': '🇫🇷',
+    'German': '🇩🇪',
+    'Italian': '🇮🇹',
+    'Portuguese': '🇧🇷',
+    'Korean': '🇰🇷',
+    'Arabic': '🇸🇦',
+    'Russian': '🇷🇺',
+    'Dutch': '🇳🇱',
+    'Polish': '🇵🇱',
+    'Hindi': '🇮🇳',
+};
+
+function langBadge(language) {
+    if (!language) return '';
+    const flag = LANGUAGE_FLAGS[language] || '🌐';
+    return `<span class="history-badge lang-badge">${flag} ${language}</span>`;
+}
+
+function modelBadge(model) {
+    if (!model) return '';
+    // Shorten the model name for display (strip tag if long)
+    const display = model.length > 22 ? model.slice(0, 20) + '…' : model;
+    return `<span class="history-badge model-badge">${display}</span>`;
+}
+
 async function openHistory() {
     document.getElementById('historyModal').classList.remove('hidden');
     const container = document.getElementById('history-container');
@@ -323,13 +387,37 @@ async function openHistory() {
 
         data.history.forEach(item => {
             const date = new Date(item.timestamp).toLocaleString();
+            const row = document.createElement('div');
+            row.className = 'history-row';
+
             const btn = document.createElement('button');
-            btn.className = 'secondary';
-            btn.style.textAlign = 'left';
-            btn.style.width = '100%';
-            btn.innerHTML = `<strong>${DOMPurify.sanitize(item.scenario_id.replace(/_/g, ' '))}</strong> - ${date}`;
-            btn.onclick = () => viewHistoryItem(item.id);
-            container.appendChild(btn);
+            btn.className = 'secondary history-row-btn';
+            btn.innerHTML = `
+                <span class="history-row-title">${DOMPurify.sanitize(item.scenario_id.replace(/_/g, ' '))}</span>
+                <span class="history-row-meta">
+                    ${langBadge(item.practice_language)}
+                    ${modelBadge(item.model)}
+                    <span class="history-row-date">${date}</span>
+                </span>`;
+            btn.onclick = () => viewHistoryItem(item.id, item.practice_language, item.model);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'danger-btn';
+            delBtn.title = 'Delete this conversation';
+            delBtn.innerHTML = '🗑';
+            delBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (!confirm('Delete this conversation?')) return;
+                await fetch(`/api/history/${item.id}`, { method: 'DELETE' });
+                row.remove();
+                if (document.getElementById('history-container').children.length === 0) {
+                    document.getElementById('history-container').innerHTML = '<div style="color: var(--text-secondary);">No completed conversations yet.</div>';
+                }
+            };
+
+            row.appendChild(btn);
+            row.appendChild(delBtn);
+            container.appendChild(row);
         });
     } catch (e) {
         loading.classList.add('hidden');
@@ -341,42 +429,73 @@ function closeHistory() {
     document.getElementById('historyModal').classList.add('hidden');
 }
 
-async function viewHistoryItem(historyId) {
+async function clearAllHistory() {
+    if (!confirm('Delete ALL conversation history? This cannot be undone.')) return;
+    await fetch('/api/history', { method: 'DELETE' });
+    openHistory();
+}
+
+async function viewHistoryItem(historyId, practiceLanguage, model) {
     document.getElementById('historyModal').classList.add('hidden');
     document.getElementById('historyDetailModal').classList.remove('hidden');
     const container = document.getElementById('history-detail-messages');
-    container.innerHTML = 'Loading transcript...';
+    const summaryLoading = document.getElementById('history-summary-loading');
+    const summaryContent = document.getElementById('history-summary-content');
 
+    // Inject language + model badges into the transcript column heading
+    const transcriptHeading = document.querySelector('.history-col-transcript .history-col-heading');
+    if (transcriptHeading) {
+        transcriptHeading.innerHTML = `Transcript ${langBadge(practiceLanguage)} ${modelBadge(model)}`;
+    }
+
+    container.innerHTML = '<em style="color:var(--text-secondary)">Loading transcript...</em>';
+    summaryContent.innerHTML = '';
+    summaryLoading.classList.remove('hidden');
+
+    // Fetch transcript and summary in parallel
     try {
-        const res = await fetch(`/api/history/${historyId}`);
-        const data = await res.json();
+        const [transcriptRes, summaryRes] = await Promise.all([
+            fetch(`/api/history/${historyId}`),
+            fetch(`/api/history/${historyId}/summary`)
+        ]);
+        const transcriptData = await transcriptRes.json();
+        const summaryData = await summaryRes.json();
 
+        // Render transcript
         container.innerHTML = '';
-
-        if (!data.conversation || data.conversation.length === 0) {
+        if (!transcriptData.conversation || transcriptData.conversation.length === 0) {
             container.innerHTML = 'Empty transcript.';
-            return;
+        } else {
+            transcriptData.conversation.forEach(turn => {
+                const div = document.createElement('div');
+                div.className = `message ${turn.speaker.toLowerCase()}`;
+
+                const label = document.createElement('span');
+                label.className = 'role-label';
+                label.innerText = turn.speaker;
+
+                const text = document.createElement('div');
+                text.className = 'content';
+                text.innerHTML = DOMPurify.sanitize(marked.parse(turn.content));
+
+                div.appendChild(label);
+                div.appendChild(text);
+                container.appendChild(div);
+            });
         }
 
-        data.conversation.forEach(turn => {
-            const div = document.createElement('div');
-            div.className = `message ${turn.speaker.toLowerCase()}`;
-
-            const label = document.createElement('span');
-            label.className = 'role-label';
-            label.innerText = turn.speaker;
-
-            const text = document.createElement('div');
-            text.className = 'content';
-            text.innerHTML = DOMPurify.sanitize(marked.parse(turn.content));
-
-            div.appendChild(label);
-            div.appendChild(text);
-            container.appendChild(div);
-        });
+        // Render summary
+        summaryLoading.classList.add('hidden');
+        if (summaryData.summary) {
+            summaryContent.innerHTML = DOMPurify.sanitize(marked.parse(summaryData.summary));
+        } else {
+            summaryContent.innerHTML = '<em style="color: var(--text-secondary);">No breakdown available for this session.</em>';
+        }
 
     } catch (e) {
         container.innerHTML = '<div class="error-banner">Failed to load transcript</div>';
+        summaryLoading.classList.add('hidden');
+        summaryContent.innerHTML = '<em style="color: var(--text-secondary);">Could not load breakdown.</em>';
     }
 }
 

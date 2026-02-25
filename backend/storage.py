@@ -215,7 +215,6 @@ def get_completed_conversations():
 
 def delete_conversation(history_id: int):
     with get_db_connection() as conn:
-        conn.execute("DELETE FROM messages WHERE history_id = ?", (history_id,))
         conn.execute("DELETE FROM history WHERE id = ?", (history_id,))
 
 def delete_all_conversations():

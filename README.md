@@ -16,11 +16,11 @@ LingoFlow is designed around **multilingual models** that can carry natural conv
 - `gemma3:12b` or larger — Better multilingual quality if your GPU/CPU can handle it.
 
 **Cloud-hosted option (via Ollama):**
-- [`gemini2.0-flash-preview:gemini-2.0-flash-preview-04-17`](https://ollama.com/library/gemini2.0-flash-preview) — Runs through Google's API via Ollama (no local GPU needed). Excellent multilingual capability. Requires setting up an Ollama API key.
+- [`gemini-3-flash-preview:cloud`](https://ollama.com/library/gemini-3-flash-preview:cloud) — Runs through Google's API via Ollama (no local GPU needed). Excellent multilingual capability.
   ```
-  ollama run gemini2.0-flash-preview:gemini-2.0-flash-preview-04-17
+  ollama run gemini-3-flash-preview:cloud
   ```
-  > ⚠️ **Note:** Some cloud-hosted models may require a Google AI subscription or API quota. Check the [Ollama model page](https://ollama.com/library/gemini2.0-flash-preview) for details.
+  > ⚠️ **Note:** Some cloud-hosted models may require a Google AI subscription or API quota. Check the [Ollama models page](https://ollama.com/search) for details and other models.
 
 
 ## Current Progress

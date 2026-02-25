@@ -50,7 +50,7 @@ async function saveSettings() {
         });
         applyTheme(theme);
         closeSettings();
-        loadScenarios();
+        generateScenarios();
     } catch (e) {
         console.error(e);
         alert("Failed to save settings");
@@ -271,7 +271,10 @@ async function sendMessage() {
                 content.innerHTML = DOMPurify.sanitize(marked.parse(data.summary));
             } else {
                 loading.classList.add('hidden');
-                content.innerHTML = '<em style="color: var(--text-secondary);">Summary could not be generated.</em>';
+                const em = document.createElement('em');
+                em.className = 'summary-error';
+                em.textContent = 'Summary could not be generated.';
+                content.appendChild(em);
             }
 
             document.getElementById('backToDashboardBtn').classList.remove('hidden');
@@ -381,7 +384,10 @@ async function openHistory() {
         loading.classList.add('hidden');
 
         if (!data.history || data.history.length === 0) {
-            container.innerHTML = '<div style="color: var(--text-secondary);">No completed conversations yet.</div>';
+            const div = document.createElement('div');
+            div.className = 'summary-error';
+            div.textContent = 'No completed conversations yet.';
+            container.appendChild(div);
             return;
         }
 
@@ -392,13 +398,23 @@ async function openHistory() {
 
             const btn = document.createElement('button');
             btn.className = 'secondary history-row-btn';
-            btn.innerHTML = `
-                <span class="history-row-title">${DOMPurify.sanitize(item.scenario_id.replace(/_/g, ' '))}</span>
-                <span class="history-row-meta">
-                    ${langBadge(item.practice_language)}
-                    ${modelBadge(item.model)}
-                    <span class="history-row-date">${date}</span>
-                </span>`;
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'history-row-title';
+            titleSpan.textContent = item.scenario_id.replace(/_/g, ' ');
+
+            const metaSpan = document.createElement('span');
+            metaSpan.className = 'history-row-meta';
+            metaSpan.innerHTML = langBadge(item.practice_language) + modelBadge(item.model);
+
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'history-row-date';
+            dateSpan.textContent = date;
+
+            metaSpan.appendChild(dateSpan);
+            btn.appendChild(titleSpan);
+            btn.appendChild(metaSpan);
+
             btn.onclick = () => viewHistoryItem(item.id, item.practice_language, item.model);
 
             const delBtn = document.createElement('button');
@@ -411,7 +427,10 @@ async function openHistory() {
                 await fetch(`/api/history/${item.id}`, { method: 'DELETE' });
                 row.remove();
                 if (document.getElementById('history-container').children.length === 0) {
-                    document.getElementById('history-container').innerHTML = '<div style="color: var(--text-secondary);">No completed conversations yet.</div>';
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'summary-error';
+                    emptyDiv.textContent = 'No completed conversations yet.';
+                    document.getElementById('history-container').appendChild(emptyDiv);
                 }
             };
 
@@ -421,7 +440,10 @@ async function openHistory() {
         });
     } catch (e) {
         loading.classList.add('hidden');
-        container.innerHTML = '<div class="error-banner">Failed to load history</div>';
+        const err = document.createElement('div');
+        err.className = 'error-banner';
+        err.textContent = 'Failed to load history';
+        container.appendChild(err);
     }
 }
 
@@ -448,7 +470,12 @@ async function viewHistoryItem(historyId, practiceLanguage, model) {
         transcriptHeading.innerHTML = `Transcript ${langBadge(practiceLanguage)} ${modelBadge(model)}`;
     }
 
-    container.innerHTML = '<em style="color:var(--text-secondary)">Loading transcript...</em>';
+    const em = document.createElement('em');
+    em.className = 'summary-error';
+    em.textContent = 'Loading transcript...';
+    container.innerHTML = '';
+    container.appendChild(em);
+
     summaryContent.innerHTML = '';
     summaryLoading.classList.remove('hidden');
 
@@ -464,7 +491,7 @@ async function viewHistoryItem(historyId, practiceLanguage, model) {
         // Render transcript
         container.innerHTML = '';
         if (!transcriptData.conversation || transcriptData.conversation.length === 0) {
-            container.innerHTML = 'Empty transcript.';
+            container.textContent = 'Empty transcript.';
         } else {
             transcriptData.conversation.forEach(turn => {
                 const div = document.createElement('div');
@@ -489,13 +516,24 @@ async function viewHistoryItem(historyId, practiceLanguage, model) {
         if (summaryData.summary) {
             summaryContent.innerHTML = DOMPurify.sanitize(marked.parse(summaryData.summary));
         } else {
-            summaryContent.innerHTML = '<em style="color: var(--text-secondary);">No breakdown available for this session.</em>';
+            const em = document.createElement('em');
+            em.className = 'summary-error';
+            em.textContent = 'No breakdown available for this session.';
+            summaryContent.appendChild(em);
         }
 
     } catch (e) {
-        container.innerHTML = '<div class="error-banner">Failed to load transcript</div>';
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-banner';
+        errorDiv.textContent = 'Failed to load transcript';
+        container.innerHTML = '';
+        container.appendChild(errorDiv);
+
         summaryLoading.classList.add('hidden');
-        summaryContent.innerHTML = '<em style="color: var(--text-secondary);">Could not load breakdown.</em>';
+        const em = document.createElement('em');
+        em.className = 'summary-error';
+        em.textContent = 'Could not load breakdown.';
+        summaryContent.appendChild(em);
     }
 }
 

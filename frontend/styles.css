@@ -417,6 +417,17 @@ button:disabled {
     font-weight: 400;
 }
 
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.modal-header h2 {
+    margin: 0;
+}
+
 /* Scenarios Grid */
 .scenarios-grid {
     display: flex;
@@ -694,6 +705,11 @@ rt {
 [data-theme="light"] .summary-content {
     background: rgba(90, 103, 216, 0.05);
     border-color: rgba(90, 103, 216, 0.25);
+}
+
+.summary-error {
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
 /* Inline chat summary panel (shown after goal reached) */

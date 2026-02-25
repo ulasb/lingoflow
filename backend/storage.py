@@ -57,9 +57,23 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 scenario_id TEXT,
                 completed BOOLEAN DEFAULT 0,
+                summary TEXT DEFAULT NULL,
+                practice_language TEXT DEFAULT NULL,
+                model TEXT DEFAULT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # Migration: add new columns for existing databases
+        for col_def in [
+            "ALTER TABLE history ADD COLUMN summary TEXT DEFAULT NULL",
+            "ALTER TABLE history ADD COLUMN practice_language TEXT DEFAULT NULL",
+            "ALTER TABLE history ADD COLUMN model TEXT DEFAULT NULL",
+        ]:
+            try:
+                cursor.execute(col_def)
+            except Exception:
+                pass  # Column already exists
         
         # Messages table
         cursor.execute("""
@@ -130,12 +144,12 @@ def get_scenario(scenario_id):
         row = conn.execute("SELECT * FROM active_scenarios WHERE id = ?", (scenario_id,)).fetchone()
         return dict(row) if row else None
 
-def start_conversation(scenario_id):
+def start_conversation(scenario_id, practice_language: str = None, model: str = None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO history (scenario_id) VALUES (?)",
-            (scenario_id,)
+            "INSERT INTO history (scenario_id, practice_language, model) VALUES (?, ?, ?)",
+            (scenario_id, practice_language, model)
         )
         return cursor.lastrowid
 
@@ -182,8 +196,27 @@ def get_incomplete_conversation(scenario_id):
         row = conn.execute("SELECT id FROM history WHERE scenario_id = ? AND completed = 0 ORDER BY id DESC LIMIT 1", (scenario_id,)).fetchone()
         return row[0] if row else None
 
+def save_conversation_summary(history_id, summary: str):
+    with get_db_connection() as conn:
+        conn.execute("UPDATE history SET summary = ? WHERE id = ?", (summary, history_id))
+
+def get_conversation_summary(history_id) -> str:
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT summary FROM history WHERE id = ?", (history_id,)).fetchone()
+        return row[0] if row and row[0] else None
+
 def get_completed_conversations():
     with get_db_connection() as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute("SELECT id, scenario_id, timestamp FROM history WHERE completed = 1 ORDER BY id DESC").fetchall()
+        rows = conn.execute(
+            "SELECT id, scenario_id, timestamp, summary, practice_language, model FROM history WHERE completed = 1 ORDER BY id DESC"
+        ).fetchall()
         return [dict(r) for r in rows]
+
+def delete_conversation(history_id: int):
+    with get_db_connection() as conn:
+        conn.execute("DELETE FROM history WHERE id = ?", (history_id,))
+
+def delete_all_conversations():
+    with get_db_connection() as conn:
+        conn.execute("DELETE FROM history WHERE completed = 1")

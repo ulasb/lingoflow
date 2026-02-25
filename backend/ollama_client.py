@@ -132,6 +132,33 @@ async def evaluate_goal(model: str, goal: str, history: List[Dict]) -> bool:
         print(f"Error evaluating goal: {e}")
         return False
 
+async def generate_conversation_summary(model: str, practice_language: str, ui_language: str, goal: str, history: List[Dict]) -> str:
+    prompt_template = load_prompt("conversation_summary.txt")
+    
+    history_str = "\n".join(f"{turn['speaker']}: {turn['content']}" for turn in history)
+    
+    prompt = prompt_template.format(
+        practice_language=practice_language,
+        ui_language=ui_language,
+        scenario_goal=goal,
+        conversation_history=history_str
+    )
+    
+    try:
+        res = await get_client().post(
+            f"{OLLAMA_BASE_URL}/generate",
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False
+            }
+        )
+        data = res.json()
+        return data.get("response", "Summary could not be generated.")
+    except Exception as e:
+        print(f"Error generating conversation summary: {e}")
+        return "Summary could not be generated."
+
 async def generate_hint(model: str, practice_language: str, ui_language: str, setting: str, goal: str, history: List[Dict]) -> str:
     prompt_template = load_prompt("hint_generation.txt")
     

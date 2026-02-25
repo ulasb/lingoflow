@@ -135,9 +135,7 @@ async def evaluate_goal(model: str, goal: str, history: List[Dict]) -> bool:
 async def generate_conversation_summary(model: str, practice_language: str, ui_language: str, goal: str, history: List[Dict]) -> str:
     prompt_template = load_prompt("conversation_summary.txt")
     
-    history_str = ""
-    for turn in history:
-        history_str += f"{turn['speaker']}: {turn['content']}\n"
+    history_str = "\n".join(f"{turn['speaker']}: {turn['content']}" for turn in history)
     
     prompt = prompt_template.format(
         practice_language=practice_language,

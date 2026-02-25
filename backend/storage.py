@@ -219,5 +219,4 @@ def delete_conversation(history_id: int):
 
 def delete_all_conversations():
     with get_db_connection() as conn:
-        conn.execute("DELETE FROM messages WHERE history_id IN (SELECT id FROM history WHERE completed = 1)")
         conn.execute("DELETE FROM history WHERE completed = 1")
